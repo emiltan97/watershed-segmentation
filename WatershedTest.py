@@ -1,85 +1,72 @@
-# import numpy as np 
-# import cv2 as cv 
+import cv2
+import numpy as np 
 
-# from matplotlib import pyplot as plt 
+from matplotlib import pyplot as plt
+from skimage import morphology
+from skimage.color import label2rgb
+from skimage import feature 
+from skimage import segmentation
 
-# img = cv.imread('data/04.jpg') 
-# gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY) 
-# ret, thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU) 
-# # noise removal
-# kernel = np.ones((3,3),np.uint8)
-# opening = cv.morphologyEx(thresh,cv.MORPH_OPEN,kernel, iterations = 2)
-# # sure background area
-# sure_bg = cv.dilate(opening,kernel,iterations=3)
-# # Finding sure foreground area
-# dist_transform = cv.distanceTransform(opening,cv.DIST_L2,5)
-# ret, sure_fg = cv.threshold(dist_transform,0.7*dist_transform.max(),255,0)
-# # Finding unknown region
-# sure_fg = np.uint8(sure_fg)
-# unknown = cv.subtract(sure_bg,sure_fg)
-# # Marker labelling
-# ret, markers = cv.connectedComponents(sure_fg)
-# # Add one to all labels so that sure background is not 0, but 1watere
-# markers = markers+1
-# # Now, mark the region of unknown with zero
-# markers[unknown==255] = 0
-# markers = cv.watershed(img,markers)
-# img[markers == -1] = [255,0,0]
+def imregionalmax(image, ksize=3):
+    """Similar to matlab's imregionalmax"""
+    filterkernel = np.ones((ksize, ksize)) # 8-connectivity
+    reg_max_loc = feature.peak_local_max(image,
+                                footprint=filterkernel, indices=False,
+                                exclude_border=0)
+    return reg_max_loc.astype(np.uint8)
 
-# plt.subplot(211)
-# plt.imshow(cv.cvtColor(img, cv.COLOR_BGR2RGB))
-# plt.title('Input')
-# plt.subplot(212)
-# plt.imshow(cv.cvtColor(thresh, cv.COLOR_BGR2RGB))
-# plt.title('Thresh')
+image = cv2.imread('data/04.png', cv2.IMREAD_GRAYSCALE)
 
-# plt.show()
+sobelx = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)
+sobely = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3)
 
+# Compute gradient magnitude
+grad_magn = np.sqrt(sobelx**2 + sobely**2)
+# Put it in [0, 255] value range
+grad_magn = 255*(grad_magn - np.min(grad_magn)) / (np.max(grad_magn) - np.min(grad_magn))
 
+selem = morphology.disk(20)
+opened = morphology.opening(image, selem)
 
-# import cv2
-# import numpy as np
-# from skimage.feature import peak_local_max
-# from skimage.morphology import watershed
-# from scipy import ndimage
+eroded = morphology.erosion(image, selem)
+opening_recon = morphology.reconstruction(seed=eroded, mask=image, method='dilation')
 
-# # Load in image, convert to gray scale, and Otsu's threshold
-# image = cv2.imread('data/04.jpg')
-# gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-# thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+closed_opening = morphology.closing(opened, selem)
 
-# # Compute Euclidean distance from every binary pixel
-# # to the nearest zero pixel then find peaks
-# distance_map = ndimage.distance_transform_edt(thresh)
-# local_max = peak_local_max(distance_map, indices=False, min_distance=20, labels=thresh)
+dilated_recon_dilation = morphology.dilation(opening_recon, selem)
+recon_erosion_recon_dilation = morphology.reconstruction(dilated_recon_dilation,
+                                                    opening_recon,
+                                                    method='erosion').astype(np.uint8)
 
-# # Perform connected component analysis then apply Watershed
-# markers = ndimage.label(local_max, structure=np.ones((3, 3)))[0]
-# labels = watershed(-distance_map, markers, mask=thresh)
+foreground_1 = imregionalmax(recon_erosion_recon_dilation, ksize=65)
 
-# # Iterate through unique labels
-# total_area = 0
-# for label in np.unique(labels):
-#     if label == 0:
-#         continue
+fg_superimposed_1 = image.copy()
+fg_superimposed_1[foreground_1 == 1] = 255
+foreground_2 = morphology.closing(foreground_1, np.ones((5, 5)))
+foreground_3 = morphology.erosion(foreground_2, np.ones((5, 5)))
+foreground_4 = morphology.remove_small_objects(foreground_3.astype(bool), min_size=20)
 
-#     # Create a mask
-#     mask = np.zeros(gray.shape, dtype="uint8")
-#     mask[labels == label] = 255
+_, labeled_fg = cv2.connectedComponents(foreground_4.astype(np.uint8))
+col_labeled_fg = label2rgb(labeled_fg)
 
-#     # Find contours and determine contour area
-#     cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-#     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-#     c = max(cnts, key=cv2.contourArea)
-#     area = cv2.contourArea(c)
-#     total_area += area
-#     cv2.drawContours(image, [c], -1, (36,255,12), 4)
+_, thresholded = cv2.threshold(recon_erosion_recon_dilation, 0, 255,
+                               cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 
-# # plt.subplot(211)
-# plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-# plt.title('Input')
-# # plt.subplot(212)
-# # plt.imshow(cv.cvtColor(thresh, cv.COLOR_BGR2RGB))
-# # plt.title('Thresh')
+# Uncomment if you did find the skiz (assumed boolean here)
+# grad_magn = grad_magn + (skiz*255).astype(np.uint8)
 
-# plt.show()
+labels = morphology.watershed(grad_magn, labeled_fg)
+
+superimposed = image.copy()
+watershed_boundaries = segmentation.find_boundaries(labels)
+superimposed[watershed_boundaries] = 255
+superimposed[foreground_4] = 255
+#superimposed[skiz_im] = 255 # Uncomment if you computed skiz
+
+col_labels = label2rgb(labels)
+col_labels_merged = label2rgb(labels, image)
+
+plt.imshow(col_labels_merged)
+plt.title('Output')
+
+plt.show()
