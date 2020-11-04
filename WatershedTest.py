@@ -15,7 +15,7 @@ def imregionalmax(image, ksize=3):
                                 exclude_border=0)
     return reg_max_loc.astype(np.uint8)
 
-image = cv2.imread('data/04.png', cv2.IMREAD_GRAYSCALE)
+image = cv2.imread('data/01.png', cv2.IMREAD_GRAYSCALE)
 
 sobelx = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)
 sobely = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3)
@@ -66,7 +66,7 @@ superimposed[foreground_4] = 255
 col_labels = label2rgb(labels)
 col_labels_merged = label2rgb(labels, image)
 
-plt.imshow(col_labels_merged)
+plt.imshow(cv.cvtColor(col_labels_merged, cv.COLOR_BGR2RGB))
 plt.title('Output')
 
 plt.show()

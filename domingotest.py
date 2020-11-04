@@ -61,14 +61,19 @@ def module3(img) :
 
 if __name__ == "__main__" : 
     # Read the colored image
-    img = cv.imread('sample.png')
+    img = cv.imread('data/02.png')
     # Resize the image to 500 by 500 pixels 
     resized = cv.resize(img, (500, 500))
     # Computation of a high contrast monochrome image 
     res1 = module1(resized)
     res1 = cv.cvtColor(res1, cv.COLOR_BGR2GRAY)
+    # res2 = cv.equalizeHist(res1)
     # Global threshold estimation 
-    ret, res2 = cv.threshold(res1, 150, 255, cv.THRESH_BINARY)
+    # ret, res2 = cv.threshold(res1, 150, 255, cv.THRESH_BINARY)
+    # canny1 = cv.Canny(res2, 10, 200)
+    # canny2 = cv.Canny(res2, 50, 200)
+    # canny3 = cv.Canny(res2, 100, 200)
+    res2 = cv.Canny(res1, 50, 200)
     # Morphological operation 
     # noise removal
     kernel = np.ones((3,3),np.uint8)
@@ -93,17 +98,26 @@ if __name__ == "__main__" :
     markers = cv.watershed(resized,markers)
     resized[markers == -1] = [255,0,0]
     # Displaying results
-    plt.subplot(221)
+
+    plt.subplot(121)
     plt.imshow(cv.cvtColor(img, cv.COLOR_BGR2RGB))
     plt.title('Input')
-    plt.subplot(222) 
-    plt.imshow(cv.cvtColor(res1, cv.COLOR_BGR2RGB))
-    plt.title('Mod 1')
-    plt.subplot(223)
-    plt.imshow(cv.cvtColor(res2, cv.COLOR_BGR2RGB))
-    plt.title('Mod 2')
-    plt.subplot(224)
-    plt.imshow(resized)
-    plt.title('Mod 3')
+    plt.subplot(122)
+    # plt.imshow(cv.cvtColor(resized, cv.COLOR_BGR2RGB))
+    plt.imshow(markers)
+    plt.title('Watershed')
+
+    # plt.subplot(221)
+    # plt.imshow(cv.cvtColor(canny1, cv.COLOR_BGR2RGB))
+    # plt.title('10')
+    # plt.subplot(222) 
+    # plt.imshow(cv.cvtColor(canny2, cv.COLOR_BGR2RGB))
+    # plt.title('50')
+    # plt.subplot(223)
+    # plt.imshow(cv.cvtColor(canny3, cv.COLOR_BGR2RGB))
+    # plt.title('100')
+    # plt.subplot(224)
+    # plt.imshow(cv.cvtColor(canny4, cv.COLOR_BGR2RGB))
+    # plt.title('Without EqualizedHist')
 
     plt.show() 
