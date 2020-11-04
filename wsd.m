@@ -1,45 +1,51 @@
-close all
+close all;
 clear;
 clc;
-A = imread('sample.png');
-figure
-imshow(A)
 
-A = A(:, :, 3);
-figure
-imshow(A)
+img = imread('sample.png'); 
+figure;
+imshow(img); 
 
-se = strel('disk', 140); 
-Ie = imerode(A, se); 
-Iobr = imreconstruct(Ie, A); 
-figure
-imshow(Iobr)
+se = strel('disk', 20); 
+io = imopen(img, se); 
+figure; 
+imshow(io);
 
-Iobrd = imdilate(Iobr, se);
-Iobrcbr = imreconstruct(imcomplement(Iobrd), imcomplement(Iobr)); 
-Iobrcbr = imcomplement(Iobrcbr); 
-figure
-imshow(Iobrcbr)
+hist = histeq(io);
+figure;
+imshow(hist);
 
-fgm = imregionalmin(Iobrcbr); 
-figure
-imshow(fgm)
+hist = hist(:, :, 3); 
+figure;
+imshow(hist);
 
-A2 = labeloverlay(A, fgm); 
-figure
-imshow(A2)
+mask = hist < 50; 
+figure; 
+imshow(mask);
 
-% se2 = strel(ones(5,5)); 
-% fgm2 = imclose(fgm, se2); 
-% fgm2 = imerode(fgm2, se2);
-% figure
-% imshow(fgm2)
+maskedImg = labeloverlay(img, mask); 
+figure; 
+imshow(maskedImg);
 
-% gmag = imgradient(A);
-% gmag = gmag / max( max(gmag) );
-
-bw = fgm; 
-DL = watershed(bw);
-bgm = DL == 0; 
-figure
-imshow(bw)
+% img = img(:, :, 3); 
+% figure;
+% imshow(img);
+% 
+% hist = histeq(img);
+% figure;
+% imshow(hist);
+% 
+% se = strel('disk', 100); 
+% io = imopen(hist, se); 
+% ie = imerode(hist, se); 
+% iobr = imreconstruct(ie, hist);
+% figure;
+% imshow(iobr);
+% 
+% mask = iobr < 80;
+% figure;
+% imshow(mask);
+% 
+% maskedImg = labeloverlay(img, mask); 
+% figure; 
+% imshow(maskedImg);
