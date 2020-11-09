@@ -6,12 +6,10 @@ clc;
 img = input('sample.png');
 kernel = strel('square', 5); 
 blur = opening(img, kernel); 
-kmean = kmeans(blur, 7);
+kmean = kmeans(blur, 4);
 gray = grayscale(kmean);
-kernel = strel('square', 9);
+kernel = 
 blur = opening(gray, kernel); 
-thres = threshold(blur, 100);
-masked = applymask(img, thres);
 
 % % Functions
 function img2mesh(img)
